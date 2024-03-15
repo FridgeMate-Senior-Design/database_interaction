@@ -2,16 +2,7 @@
 import uuid
 import datetime
 
-db_conn = None
-db_cursor = None
-
-def set_database_connection(conn, cursor):
-    global db_conn
-    global db_cursor
-    db_conn = conn
-    db_cursor = cursor
-
-def get_user_mapping(data):
+def get_user_mapping(data, db_conn, db_cursor):
     """
     {
         "user_id": "user1"
@@ -31,7 +22,25 @@ def get_user_mapping(data):
 
     return {"success": True, "user_id": user_id, "fridge_id": fridge_id}
 
-def get_data(data):
+def add_user_mapping(data, db_conn, db_cursor):
+    # Extract user_id and fridge_id from the request
+    user_id = data.get('user_id')
+    fridge_id = data.get('fridge_id')
+
+    # Check if the mapping already exists
+    db_cursor.execute("SELECT * FROM user_map WHERE user_id = ?", (user_id,))
+    existing_mapping = db_cursor.fetchone()
+
+    if existing_mapping:
+        return {"success": False, "message": "Mapping for user already exists"}
+
+    # Add the user mapping to user_map table
+    db_cursor.execute("INSERT INTO user_map (user_id, fridge_id) VALUES (?, ?)", (user_id, fridge_id))
+    db_conn.commit()
+
+    return {"success": True, "user_id": user_id, "fridge_id": fridge_id}
+
+def get_data(data, db_conn, db_cursor):
     """
     {
         "user_id": "user1"
@@ -51,15 +60,15 @@ def get_data(data):
 
     # Fetch labeled items
     db_cursor.execute("SELECT uuid, expiration_date, name FROM item_info WHERE fridge_id = ? AND name IS NOT NULL", (fridge_id,))
-    labeled_items = [{"uuid": row[0], "expiration_date": row[1].strftime("%m/%d/%Y"), "name": row[2]} for row in db_cursor.fetchall()]
+    labeled_items = [{"uuid": row[0], "expiration_date": datetime.datetime.strptime(row[1], "%Y-%m-%d").strftime("%m/%d/%Y"), "name": row[2]} for row in db_cursor.fetchall()]
 
     # Fetch unlabeled items
     db_cursor.execute("SELECT uuid, expiration_date, image_url FROM item_info WHERE fridge_id = ? AND name IS NULL", (fridge_id,))
-    unlabeled_items = [{"uuid": row[0], "expiration_date": row[1].strftime("%m/%d/%Y"), "image_url": row[2]} for row in db_cursor.fetchall()]
+    unlabeled_items = [{"uuid": row[0], "expiration_date": datetime.datetime.strptime(row[1], "%Y-%m-%d").strftime("%m/%d/%Y"), "image_url": row[2]} for row in db_cursor.fetchall()]
 
     return {"success": True, "labeled_items": labeled_items, "unlabeled_items": unlabeled_items}
 
-def update_unlabeled_data(data):
+def update_unlabeled_data(data, db_conn, db_cursor):
     """
     {   
         "user_id": "user1",
@@ -103,7 +112,7 @@ def update_unlabeled_data(data):
 
     return {"success": True, "item": {"uuid": uuid, "name": name, "expiration_date": expiration_date_str}}
 
-def update_labeled_data(data):
+def update_labeled_data(data, db_conn, db_cursor):
     """
     {
         "user_id": "user1",
@@ -145,7 +154,7 @@ def update_labeled_data(data):
 
     return {"success": True, "item": {"uuid": uuid, "expiration_date": expiration_date_str}}
 
-def add_data(data):
+def add_data(data, db_conn, db_cursor):
     """
     { 
         "user_id": "user1",
@@ -185,7 +194,7 @@ def add_data(data):
 
     return {"success": True, "item": {"uuid": item_uuid, "name": name, "expiration_date": expiration_date_str}}
 
-def delete_data(data):
+def delete_data(data, db_conn, db_cursor):
     """
     {
         "user_id": "user1",
