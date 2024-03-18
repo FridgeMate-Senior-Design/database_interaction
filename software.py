@@ -23,6 +23,12 @@ def get_user_mapping(data, db_conn, db_cursor):
     return {"success": True, "user_id": user_id, "fridge_id": fridge_id}
 
 def add_user_mapping(data, db_conn, db_cursor):
+    """
+    {   
+        "user_id": "user_1",
+        "fridge_id": "fridge_1"
+    }
+    """
     # Extract user_id and fridge_id from the request
     user_id = data.get('user_id')
     fridge_id = data.get('fridge_id')
