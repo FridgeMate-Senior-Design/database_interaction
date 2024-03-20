@@ -135,49 +135,6 @@ def update_unlabeled_data(data, db_conn, db_cursor):
 
     return {"success": True, "item": {"uuid": uuid, "name": name, "expiration_date": expiration_date_str}}
 
-    """
-    {   
-        "user_id": "user1",
-        "item": {
-            "uuid": "1234",
-            "name": "Milk",
-            "expiration_date": "12/31/2020"
-        }
-    }
-    """
-    # Extract user_id and item data from the request
-    user_id = data.get('user_id')
-    item = data.get('item')
-
-    # Extract item details
-    uuid = item.get('uuid')
-    name = item.get('name')
-    expiration_date_str = item.get('expiration_date')
-
-    # Check if user_id exists in user_map table
-    db_cursor.execute("SELECT fridge_id FROM user_map WHERE user_id = ?", (user_id,))
-    fridge_id_row = db_cursor.fetchone()
-
-    if fridge_id_row is None:
-        return {"success": False, "message": "User does not have a fridge associated"}
-
-    # Check if the item exists and is unlabeled
-    db_cursor.execute("SELECT name FROM item_info WHERE uuid = ? AND name IS NULL", (uuid,))
-    existing_item = db_cursor.fetchone()
-
-    if existing_item is None:
-        return {"success": False, "message": "Item with specified UUID does not exist or is labeled"}
-
-    # Convert expiration_date string to a datetime object
-    expiration_date = datetime.datetime.strptime(expiration_date_str, "%m/%d/%Y").date()
-
-    # Update the item in item_info table
-    db_cursor.execute("UPDATE item_info SET name = ?, expiration_date = ? WHERE uuid = ?",
-                      (name, expiration_date, uuid))
-    db_conn.commit()
-
-    return {"success": True, "item": {"uuid": uuid, "name": name, "expiration_date": expiration_date_str}}
-
 def update_labeled_data(data, db_conn, db_cursor):
     """
     {
